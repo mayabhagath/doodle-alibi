@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Doodle Alibi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&family=Gaegu:wght@400;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: a dot-grid sketchbook page. No boxes; drawings are taped-up polaroids, the canvas is the one framed object. */
+:root{
+  --paper:#f5f5f1; --dot:#c6cfdf; --ink:#23262c; --muted:#6b707a; --line:#d4d7dd;
+  --pen:#2444b8; --pen-ink:#ffffff; --red:#c7372c; --ok:#2b8653; --gold:#c99700;
+  --tape:rgba(236,212,120,.62); --snap:#ffffff; --snap-ink:#23262c; --shade:rgba(20,24,32,.10);
+  --display:"Rubik Mono One","Arial Black",system-ui,sans-serif;
+  --hand:"Gaegu","Comic Sans MS","Segoe Print",cursive;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#1b1d21; --dot:#343841; --ink:#ecebe6; --muted:#a2a6ad; --line:#3a3e46;
+  --pen:#8fa3ff; --pen-ink:#0f1430; --red:#ff7a6e; --ok:#5fd093; --gold:#f2c94c;
+  --tape:rgba(236,212,120,.42); --snap:#f6f6f2; --snap-ink:#23262c; --shade:rgba(0,0,0,.45); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#1b1d21; --dot:#343841; --ink:#ecebe6; --muted:#a2a6ad; --line:#3a3e46;
+  --pen:#8fa3ff; --pen-ink:#0f1430; --red:#ff7a6e; --ok:#5fd093; --gold:#f2c94c;
+  --tape:rgba(236,212,120,.42); --snap:#f6f6f2; --snap-ink:#23262c; --shade:rgba(0,0,0,.45); color-scheme:dark}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background-color:var(--paper);background-image:radial-gradient(var(--dot) 1.1px,transparent 1.5px);background-size:22px 22px;
+  color:var(--ink);font:16px/1.5 var(--body);padding-inline:16px;padding-block:18px 40px}
+main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.logo{font:19px/1 var(--display);margin:0;letter-spacing:.01em}
+.logo span{background:var(--tape);padding:2px .25em;color:var(--ink)}
+.status{font-size:14px;color:var(--muted)}
+h2{font:21px/1.2 var(--display);margin:0;text-wrap:balance}
+p{margin:0}
+.prompt{font:700 36px/1.05 var(--hand);text-wrap:balance}
+.rule{font:700 22px/1.1 var(--hand);color:var(--red)}
+.lede{color:var(--muted)}
+.label{font-size:14px;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:14px}
+.center{text-align:center;align-items:center}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.name-big{font:700 64px/1 var(--hand);text-wrap:balance}
+svg.ic{width:18px;height:18px;flex:none}
+
+/* inputs: written on the page */
+input[type=text]{font:20px var(--body);color:var(--ink);background:transparent;border:0;border-bottom:2px solid var(--line);
+  border-radius:0;padding:8px 2px;min-width:0;flex:1}
+input::placeholder{color:var(--muted);opacity:.7}
+input:focus{outline:none;border-bottom-color:var(--pen)}
+button:focus-visible{outline:3px solid var(--pen);outline-offset:3px}
+
+/* buttons */
+button{font:700 16px var(--body);cursor:pointer;color:var(--ink);background:none;border:0;padding:8px 4px}
+button.go{background:var(--pen);color:var(--pen-ink);font:15px var(--display);padding:16px 20px;border-radius:8px;width:100%;letter-spacing:.02em}
+button.go:disabled{opacity:.35;cursor:not-allowed}
+button.link{color:var(--muted);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1.5px}
+button.link:hover{color:var(--ink)}
+button.icon{display:inline-flex;align-items:center;gap:6px;color:var(--muted);padding:6px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:2px solid var(--line);border-radius:999px;padding:7px 16px;background:var(--paper)}
+.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+
+/* the sketch page (canvas) */
+.page{position:relative;margin-top:10px}
+.page::before,.page::after{content:"";position:absolute;top:-11px;width:78px;height:24px;background:var(--tape);z-index:2}
+.page::before{left:18px;transform:rotate(-4deg)}
+.page::after{right:18px;transform:rotate(3deg)}
+.sheet{position:relative;aspect-ratio:1;width:100%;max-width:100%;background:#fff;border-radius:3px;overflow:hidden;
+  box-shadow:0 1px 2px var(--shade),0 10px 26px var(--shade)}
+canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+.cover{position:absolute;inset:0;background:var(--snap);color:var(--snap-ink);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;padding:24px;text-align:center}
+.cover .lede{color:#6b707a}
+.timer{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.timer i{display:block;height:100%;background:var(--ink);width:100%}
+.timer.hurry i{background:var(--red)}
+.clock{font:30px/1 var(--display);font-variant-numeric:tabular-nums;min-width:2ch;text-align:right}
+.clock.hurry{color:var(--red);animation:pulse .5s infinite alternate}
+@keyframes pulse{to{transform:scale(1.12)}}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sw{width:34px;height:34px;border-radius:50%;padding:0;border:3px solid var(--paper);box-shadow:0 0 0 2px var(--line)}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--ink);transform:scale(1.12)}
+.tool{border:2px solid var(--line);border-radius:999px;padding:6px 12px;font-size:14px;background:var(--paper)}
+.tool[aria-pressed="true"]{border-color:var(--ink)}
+
+/* polaroids */
+.board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 18px;padding-top:10px}
+.snap{position:relative;display:flex;flex-direction:column;gap:6px;background:var(--snap);color:var(--snap-ink);padding:9px 9px 12px;
+  border-radius:2px;box-shadow:0 1px 2px var(--shade),0 8px 18px var(--shade);transform:rotate(var(--tilt,0deg));min-width:0;text-align:center;font:inherit}
+.snap::before{content:"";position:absolute;top:-10px;left:50%;width:64px;height:20px;background:var(--tape);transform:translateX(-50%) rotate(-3deg)}
+.snap img{width:100%;aspect-ratio:1;display:block;background:#fff;border:1px solid #e4e4df}
+.snap .tag{position:absolute;top:14px;left:14px;font:13px/1 var(--display);color:#9aa0a8}
+.cap{font:700 25px/1 var(--hand);min-height:25px;overflow-wrap:anywhere}
+.cap.empty{color:#a6abb2}
+.snap.pick{cursor:pointer;transition:transform .15s}
+.snap.pick:hover{transform:rotate(0deg) scale(1.02)}
+.snap.armed{outline:3px dashed var(--pen);outline-offset:4px}
+.snap.mine{opacity:.75;cursor:default}
+.note{font-size:13px;line-height:1.3}
+.note.fool{color:#2b8653}.note.seen{color:#7a7f88}
+.pop{animation:pop .45s ease-out backwards}
+@keyframes pop{from{transform:scale(.4) rotate(-10deg);opacity:0}}
+
+/* guessing tray */
+.tray{position:sticky;bottom:0;padding-block:14px calc(14px + env(safe-area-inset-bottom,0px));background:var(--paper);
+  display:flex;flex-direction:column;gap:12px;border-top:2px solid var(--line)}
+.mode{display:inline-flex;gap:2px;padding:3px;border:2px solid var(--line);border-radius:999px;background:var(--paper)}
+.mode button{display:inline-flex;align-items:center;justify-content:center;width:34px;height:30px;padding:0;border-radius:999px;color:var(--muted)}
+.mode button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.mode button:hover{color:var(--ink)}
+.mode button[aria-pressed="true"]:hover{color:var(--paper)}
+.chip.used{opacity:.45;text-decoration:line-through}
+
+/* scores */
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+td{padding:10px 4px;border-bottom:2px dotted var(--line)}
+td.who{font:700 26px/1 var(--hand)}
+td.n{text-align:right;font:20px var(--display)}
+.crown{color:var(--gold);vertical-align:-2px;margin-right:4px}
+.awards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}
+.award b{display:block;font:700 26px/1.05 var(--hand)}
+.err{color:var(--red);font-size:14px}
+
+/* quit dialog */
+.modal{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:16px;
+  background:color-mix(in srgb,var(--paper) 40%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:fade .15s ease-out}
+.card{position:relative;width:100%;max-width:340px;background:var(--snap);color:var(--snap-ink);padding:30px 22px 22px;border-radius:3px;
+  box-shadow:0 2px 4px var(--shade),0 18px 40px var(--shade);transform:rotate(-1deg);animation:rise .2s ease-out;
+  display:flex;flex-direction:column;gap:12px;text-align:center}
+.card::before{content:"";position:absolute;top:-11px;left:50%;width:90px;height:24px;background:var(--tape);transform:translateX(-50%) rotate(2deg)}
+.card .lede{color:#6b707a}
+.card button.link{color:#6b707a}
+@keyframes fade{from{opacity:0}}
+@keyframes rise{from{transform:translateY(14px) rotate(-1deg) scale(.97);opacity:0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<main id="app"></main>
+
+<script>
+/* Prompts are built on the spot: who + doing what (+ sometimes a twist). */
+const WHO = [
+  "a nervous pigeon","your landlord","a retired superhero","a haunted fridge","a suspicious potato","a cat in a business suit",
+  "a sleepy dragon","an alien tourist","a very small elephant","a robot grandma","a confident snail","a ghost",
+  "a cow","a vampire","a giant mosquito","your professor","a toaster","a shark with arms",
+  "a pirate","a baby dinosaur","a nervous astronaut","a wizard","an auto-rickshaw","a moody cloud",
+  "a samosa","a spider","a penguin","a yeti","a mermaid","a goat",
+  "a sentient traffic cone","a chef","a lost sock","a crow with a plan","a teddy bear","a giraffe",
+  "a haunted laptop","a frog prince","a tiny king","a ninja grandpa"
+];
+const DOING = [
+  "trying to parallel park","at a job interview","hiding from the police","on a first date","learning to swim",
+  "stuck in traffic","giving a TED talk","doing yoga","failing an exam","stealing the last slice of pizza",
+  "running for president","at the dentist","opening a birthday present","lost in a mall","riding a rollercoaster",
+  "taking a selfie","fighting a pillow","waiting for the bus","winning an award","cooking dinner",
+  "walking a dog","on a roller-skating date","climbing Mount Everest","playing cricket","doing a magic trick",
+  "caught in the rain","sneaking into a movie","at a wedding","reading a scary story","getting a haircut",
+  "flying a kite","on a group project","starting a band","taking an exam at 8 a.m.","shopping for shoes",
+  "falling asleep in class","moving to a new house","at the gym","ordering at a drive-through","escaping a maze"
+];
+const TWIST = [
+  "underwater","in the year 3000","in outer space","as a Bollywood poster","in the middle of a storm",
+  "at a haunted house","on the moon","inside a snow globe","in a jungle","during a power cut",
+  "as a famous painting","on a tiny island","in slow motion","at a medieval castle","in a hot-air balloon",
+  "on a train","in the desert","during a zombie attack","at a dance party","on top of a skyscraper"
+];
+const recent=[];
+function makePrompt(){
+  let p;
+  do{ p=`${pick(WHO)} ${pick(DOING)}${Math.random()<.35?` ${pick(TWIST)}`:""}`; }while(recent.includes(p));
+  recent.push(p); if(recent.length>30)recent.shift();
+  return p[0].toUpperCase()+p.slice(1);
+}
+const CHAOS = [
+  "Without lifting your finger","With your non-dominant hand","Eyes closed for the first 5 seconds",
+  "As if you're 5 years old","Using only circles"
+];
+const COLORS = ["#23262c","#d6392e","#2444b8","#2b8653","#e8a800","#8a4fd0","#8a5a2b"];
+const TILT = [-2.2,1.6,-1.2,2.1,-1.6,1.1,-2.5,1.8];
+
+/* tiny hand-drawn icons */
+const IC = {
+  x:`<svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 4.2c3.4 3.6 6.8 7.3 11 11.4M15.6 4.6c-3.6 3-7 6.6-11.2 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`,
+  crown:`<svg class="ic crown" viewBox="0 0 24 18" aria-hidden="true"><path d="M2.5 15.5 3.8 4.6l5.3 5.8L12.2 2l3 8.3 5.3-5.6 1 10.8c-6.2.9-12.5.9-19-.0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`,
+  moon:`<svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.8 12.6A6.6 6.6 0 0 1 7.4 4.1c.1-.4.2-.8.4-1.2A7.3 7.3 0 1 0 17 12.2c-.4.2-.8.3-1.2.4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`,
+  sun:`<svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10.2" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 1.8v2.3M10.1 16v2.2M1.9 10.1h2.3M15.9 9.9h2.2M4.2 4.3l1.6 1.6M14.3 14.2l1.5 1.6M4.3 15.8l1.6-1.5M14.2 5.9l1.6-1.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+  plus:`<svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M10.2 3.5c-.3 4.3-.2 8.6.1 13M3.6 10.3c4.2-.4 8.5-.3 12.8 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`
+};
+
+let S = {
+  players:["","",""], seconds:20, chaos:false, scores:{}, round:0,
+  prompt:"", rule:"", turn:0, drawings:[], order:[], guesser:0, guesses:[]
+};
+
+const $ = (h)=>{const t=document.createElement("template");t.innerHTML=h.trim();return t.content.firstElementChild};
+const esc = s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pick = a=>a[Math.floor(Math.random()*a.length)];
+const shuffle = a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const L = i=>String.fromCharCode(65+i);
+const tilt = i=>TILT[i%TILT.length];
+const app = document.getElementById("app");
+async function keepAwake(){try{await navigator.wakeLock?.request("screen")}catch(e){}}
+
+/* light / dark toggle, remembered on this device */
+const sysDark=()=>window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t==="dark":sysDark()};
+function setTheme(t){document.documentElement.dataset.theme=t;try{localStorage.setItem("doodle-theme",t)}catch(e){}}
+try{const saved=localStorage.getItem("doodle-theme");if(saved)document.documentElement.dataset.theme=saved}catch(e){}
+function themeButton(){
+  const g=$(`<div class="mode" role="group" aria-label="Colour mode">
+    <button data-t="light" aria-label="Light mode">${IC.sun}</button>
+    <button data-t="dark" aria-label="Dark mode">${IC.moon}</button></div>`);
+  const paint=()=>{const d=isDark();g.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",(b.dataset.t==="dark")===d))};
+  g.querySelectorAll("button").forEach(b=>b.onclick=()=>{setTheme(b.dataset.t);paint()});
+  paint();return g;
+}
+
+function frame(body, status){
+  app.innerHTML="";
+  document.querySelector(".modal")?.remove();
+  S.onPause=S.onResume=null;
+  const inGame=status!==null;
+  const hd=$(`<header><h1 class="logo">Doodle <span>Alibi</span></h1>
+    <div class="row" style="gap:6px">${inGame?`<span class="status">${status}</span><button class="icon" id="quit">${IC.x}Quit</button>`:""}</div></header>`);
+  if(inGame)hd.querySelector("#quit").onclick=openQuit;
+  else hd.querySelector(".row").prepend(themeButton());
+  app.append(hd,body);
+  window.scrollTo(0,0);
+}
+
+function openQuit(){
+  S.onPause?.();
+  const m=$(`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="qt">
+    <div class="card">
+      <p class="lede">Game paused</p>
+      <h2 id="qt">Quit this game?</h2>
+      <p class="lede">The drawings and scores from this game will be lost.</p>
+      <button class="go" id="stay">Keep playing</button>
+      <button class="link" id="yes">Quit to home</button>
+    </div></div>`);
+  const close=()=>{m.remove();document.removeEventListener("keydown",onKey);S.onResume?.()};
+  const onKey=e=>{if(e.key==="Escape")close()};
+  document.addEventListener("keydown",onKey);
+  m.querySelector("#stay").onclick=close;
+  m.onclick=e=>{if(e.target===m)close()};
+  m.querySelector("#yes").onclick=()=>{document.removeEventListener("keydown",onKey);clearInterval(S.tick);S.round=0;S.scores={};setup()};
+  document.body.appendChild(m);
+  m.querySelector("#stay").focus();
+}
+
+/* ---------- 1. Setup ---------- */
+function setup(){
+  const el=$(`<section class="stack" style="gap:26px">
+    <div class="stack" style="gap:8px">
+      <p class="prompt">Everyone draws the same thing. Then you guess who drew what.</p>
+      <p class="lede">One phone, passed around the room.</p>
+    </div>
+    <div class="stack" style="gap:6px">
+      <p class="label">Players</p>
+      <div id="names" class="stack" style="gap:4px"></div>
+      <div><button class="icon" id="add">${IC.plus}Add a player</button></div>
+    </div>
+    <div class="stack" style="gap:8px"><p class="label">Time to draw</p><div class="chips" id="secs"></div></div>
+    <div class="stack" style="gap:8px"><p class="label">Extra challenge</p>
+      <div class="chips"><button class="chip" id="chaos" aria-pressed="${S.chaos}">Add a silly rule each round</button></div></div>
+    <p class="err" id="err" hidden></p>
+    <button class="go" id="start">Start the game</button>
+  </section>`);
+  const names=el.querySelector("#names");
+  const draw=()=>{names.innerHTML="";S.players.forEach((p,i)=>{
+    const r=$(`<div class="row" style="flex-wrap:nowrap"><input type="text" id="p${i}" maxlength="14" value="${esc(p)}" placeholder="Player ${i+1}" aria-label="Player ${i+1} name"><button class="icon" aria-label="Remove player ${i+1}">${IC.x}</button></div>`);
+    r.querySelector("input").oninput=e=>S.players[i]=e.target.value;
+    const rm=r.querySelector("button");rm.disabled=S.players.length<=3;rm.style.visibility=rm.disabled?"hidden":"visible";
+    rm.onclick=()=>{S.players.splice(i,1);draw()};
+    names.appendChild(r)})};
+  draw();
+  el.querySelector("#add").onclick=()=>{if(S.players.length<8){S.players.push("");draw();el.querySelector(`#p${S.players.length-1}`).focus()}};
+  const secs=el.querySelector("#secs");
+  [10,20,30,45].forEach(s=>{const b=$(`<button class="chip" aria-pressed="${S.seconds===s}">${s} sec</button>`);
+    b.onclick=()=>{S.seconds=s;secs.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b))};secs.appendChild(b)});
+  const ch=el.querySelector("#chaos");ch.onclick=()=>{S.chaos=!S.chaos;ch.setAttribute("aria-pressed",S.chaos)};
+  el.querySelector("#start").onclick=()=>{
+    const clean=S.players.map((p,i)=>p.trim()||`Player ${i+1}`);
+    const err=el.querySelector("#err");
+    if(new Set(clean.map(p=>p.toLowerCase())).size!==clean.length){err.textContent="Two players have the same name. Add an initial to tell them apart.";err.hidden=false;return}
+    S.players=clean; S.round=0; S.scores=Object.fromEntries(clean.map(p=>[p,0]));
+    keepAwake(); newRound();
+  };
+  frame(el,null);
+}
+
+/* ---------- 2. Drawing turns ---------- */
+function newRound(){
+  S.round++; S.prompt=makePrompt(); S.rule=S.chaos?pick(CHAOS):"";
+  S.turn=0; S.drawings=[]; S.guesses=[]; S.guesser=0;
+  handoff();
+}
+function handoff(){
+  const name=S.players[S.turn];
+  const el=$(`<section class="stack center" style="gap:18px;padding-top:12vh">
+    <p class="lede">Pass the phone to</p>
+    <p class="name-big">${esc(name)}</p>
+    <p class="lede">Everyone else, look away.</p>
+    <button class="go" id="ready" style="max-width:340px">I'm ${esc(name)}, show me</button>
+  </section>`);
+  el.querySelector("#ready").onclick=drawScreen;
+  frame(el,`Round ${S.round} · ${S.turn+1}/${S.players.length}`);
+}
+function drawScreen(){
+  const ruleHtml=S.rule?`<p class="rule">${esc(S.rule)}</p>`:"";
+  const el=$(`<section class="stack" style="gap:12px">
+    <div class="row" style="justify-content:space-between;flex-wrap:nowrap;align-items:flex-end">
+      <div class="stack" style="gap:4px;min-width:0"><p class="prompt">${esc(S.prompt)}</p>${ruleHtml}</div>
+      <div class="clock" id="clock">${S.seconds}</div>
+    </div>
+    <div class="timer" id="bar"><i></i></div>
+    <div class="page"><div class="sheet"><canvas id="cv" width="800" height="800"></canvas>
+      <div class="cover" id="cover"><p class="prompt">${esc(S.prompt)}</p>${ruleHtml}<p class="lede">You have ${S.seconds} seconds.</p><button class="go" id="go" style="max-width:260px">Start drawing</button></div>
+    </div></div>
+    <div class="tools" id="tools"></div>
+    <div><button class="link" id="done" hidden>I'm finished</button></div>
+  </section>`);
+  frame(el,`Round ${S.round} · ${S.turn+1}/${S.players.length}`);
+  const cv=el.querySelector("#cv"),ctx=cv.getContext("2d");
+  ctx.fillStyle="#fff";ctx.fillRect(0,0,800,800);ctx.lineCap="round";ctx.lineJoin="round";
+  let color=COLORS[0],size=10,erasing=false,live=false,down=false,last=null;
+  const tools=el.querySelector("#tools");
+  COLORS.forEach((c,i)=>{const b=$(`<button class="sw" style="background:${c}" aria-label="Colour ${i+1}"></button>`);
+    b.onclick=()=>{color=c;erasing=false;sync()};tools.appendChild(b)});
+  const thin=$(`<button class="tool">Thin</button>`),thick=$(`<button class="tool">Thick</button>`),er=$(`<button class="tool">Eraser</button>`),clr=$(`<button class="tool">Clear</button>`);
+  thin.onclick=()=>{size=5;sync()};thick.onclick=()=>{size=18;sync()};er.onclick=()=>{erasing=true;sync()};
+  clr.onclick=()=>{ctx.fillStyle="#fff";ctx.fillRect(0,0,800,800)};
+  tools.append(thin,thick,er,clr);
+  function sync(){[...tools.querySelectorAll(".sw")].forEach((b,i)=>b.setAttribute("aria-pressed",!erasing&&COLORS[i]===color));
+    thin.setAttribute("aria-pressed",size<10);thick.setAttribute("aria-pressed",size>10);er.setAttribute("aria-pressed",erasing)}
+  sync();
+  const pos=e=>{const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*800/r.width,y:(e.clientY-r.top)*800/r.height}};
+  cv.addEventListener("pointerdown",e=>{if(!live||paused)return;down=true;cv.setPointerCapture(e.pointerId);last=pos(e);stroke(last,last)});
+  cv.addEventListener("pointermove",e=>{if(!down||!live||paused)return;const p=pos(e);stroke(last,p);last=p});
+  ["pointerup","pointercancel"].forEach(t=>cv.addEventListener(t,()=>down=false));
+  function stroke(a,b){ctx.strokeStyle=erasing?"#fff":color;ctx.lineWidth=erasing?size*2.5:size;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}
+  let t0,tick,paused=false,pausedAt=0;
+  S.onPause=()=>{if(live&&!paused){paused=true;down=false;pausedAt=performance.now()}};
+  S.onResume=()=>{if(paused){t0+=performance.now()-pausedAt;paused=false}};
+  const clock=el.querySelector("#clock"),bar=el.querySelector("#bar"),fill=bar.querySelector("i");
+  el.querySelector("#go").onclick=()=>{
+    el.querySelector("#cover").hidden=true;el.querySelector("#done").hidden=false;live=true;t0=performance.now();
+    tick=S.tick=setInterval(()=>{if(paused)return;const left=Math.max(0,S.seconds-(performance.now()-t0)/1000);
+      clock.textContent=Math.ceil(left);fill.style.width=(left/S.seconds*100)+"%";
+      const h=left<=5;clock.classList.toggle("hurry",h);bar.classList.toggle("hurry",h);
+      if(left<=0)finish()},100);
+  };
+  el.querySelector("#done").onclick=finish;
+  function finish(){if(!live)return;live=false;down=false;clearInterval(tick);
+    S.drawings[S.turn]=cv.toDataURL("image/png");
+    S.turn++;
+    const next=S.turn<S.players.length?handoff:allDrawn;
+    const c=el.querySelector("#cover");
+    c.innerHTML=`<p class="prompt">Time's up</p><p class="lede">Your drawing is saved and hidden.</p><button class="go" style="max-width:260px">Hide it and pass on</button>`;
+    c.hidden=false;el.querySelector("#done").hidden=true;c.querySelector("button").onclick=next}
+}
+
+/* ---------- 3. Guessing ---------- */
+function allDrawn(){
+  S.order=shuffle(S.players.map((_,i)=>i)); // slot -> artist index
+  guessHandoff();
+}
+function guessHandoff(){
+  const name=S.players[S.guesser];
+  const el=$(`<section class="stack center" style="gap:18px;padding-top:12vh">
+    <h2>Start guessing</h2>
+    <p class="lede">Pass the phone to</p>
+    <p class="name-big">${esc(name)}</p>
+    <button class="go" id="r" style="max-width:340px">I'm ${esc(name)}, let me guess</button></section>`);
+  el.querySelector("#r").onclick=guessScreen;
+  frame(el,`Round ${S.round} · ${S.guesser+1}/${S.players.length}`);
+}
+function guessScreen(){
+  const me=S.guesser,picks={};
+  const names=S.players.map((_,i)=>i).filter(i=>i!==me);
+  const need=names.length;
+  const el=$(`<section class="stack" style="gap:16px">
+    <div class="stack" style="gap:2px"><p class="label">Everyone drew</p><p class="prompt">${esc(S.prompt)}</p></div>
+    <div class="board" id="board"></div>
+    <div class="tray"><p class="lede" id="hint"></p><div class="chips" id="chips"></div>
+      <button class="go" id="lock" disabled>Lock in my guesses</button></div>
+  </section>`);
+  const board=el.querySelector("#board"),chips=el.querySelector("#chips"),hint=el.querySelector("#hint"),lock=el.querySelector("#lock");
+  const used=i=>Object.values(picks).includes(i);
+  const nextFree=()=>names.find(i=>!used(i))??null;
+  let sel=nextFree();
+  function render(){
+    board.innerHTML="";
+    S.order.forEach((artist,slot)=>{
+      const mine=artist===me,who=picks[slot];
+      const cap=mine?`<span class="cap empty">yours</span>`:who!=null?`<span class="cap">${esc(S.players[who])}</span>`:`<span class="cap empty">?</span>`;
+      const c=$(`<button class="snap ${mine?"mine":"pick"} ${!mine&&sel!=null?"armed":""}" style="--tilt:${tilt(slot)}deg" ${mine?"disabled":""} aria-label="Drawing ${L(slot)}"><span class="tag">${L(slot)}</span><img alt="" src="${S.drawings[artist]}">${cap}</button>`);
+      if(!mine)c.onclick=()=>{
+        if(sel==null){if(who!=null){delete picks[slot];sel=who}}
+        else{for(const k in picks)if(picks[k]===sel)delete picks[k];picks[slot]=sel;sel=nextFree()}
+        render()};
+      board.appendChild(c)});
+    chips.innerHTML="";
+    names.forEach(i=>{const b=$(`<button class="chip ${used(i)?"used":""}" aria-pressed="${sel===i}">${esc(S.players[i])}</button>`);
+      b.onclick=()=>{sel=sel===i?null:i;render()};chips.appendChild(b)});
+    const done=Object.keys(picks).length>=need;
+    hint.textContent=sel!=null?`Tap the drawing you think ${S.players[sel]} drew.`:done?"All set. Tap a drawing to change it.":"Tap a name, then tap their drawing.";
+    lock.disabled=!done;
+  }
+  render();
+  lock.onclick=()=>{S.guesses[me]=picks;S.guesser++;S.guesser<S.players.length?guessHandoff():results()};
+  frame(el,`Round ${S.round} · ${me+1}/${S.players.length}`);
+}
+
+/* ---------- 4. Results ---------- */
+function results(){
+  const fooledBy={},correct={};S.players.forEach(p=>{fooledBy[p]=0;correct[p]=0});
+  S.order.forEach((artist,slot)=>S.players.forEach((_,g)=>{if(g===artist)return;
+    if(S.guesses[g][slot]===artist){S.scores[S.players[g]]++;correct[S.players[g]]++}
+    else{S.scores[S.players[artist]]++;fooledBy[S.players[artist]]++}}));
+  const top=o=>{const m=Math.max(...Object.values(o));return m>0?Object.keys(o).filter(k=>o[k]===m):[]};
+  const sneak=top(fooledBy),det=top(correct);
+  const obvious=Object.keys(fooledBy).filter(k=>fooledBy[k]===0);
+  const rows=Object.entries(S.scores).sort((a,b)=>b[1]-a[1]);
+  const lead=rows[0][1];
+  const snaps=S.order.map((a,slot)=>{
+    const others=S.players.map((p,g)=>({p,g})).filter(x=>x.g!==a);
+    const fooled=others.filter(x=>S.guesses[x.g][slot]!==a).map(x=>esc(x.p));
+    const spotted=others.filter(x=>S.guesses[x.g][slot]===a).map(x=>esc(x.p));
+    return `<div class="snap" style="--tilt:${tilt(slot)}deg"><span class="tag">${L(slot)}</span><img alt="${esc(S.players[a])}'s drawing" src="${S.drawings[a]}">
+      <span class="cap pop" style="animation-delay:${.3+slot*.35}s">${esc(S.players[a])}</span>
+      ${fooled.length?`<span class="note fool">Fooled ${fooled.join(", ")}</span>`:""}
+      ${spotted.length?`<span class="note seen">Spotted by ${spotted.join(", ")}</span>`:""}</div>`}).join("");
+  const award=(t,names,d)=>names.length?`<div class="award"><p class="label">${t}</p><b>${names.map(esc).join(" & ")}</b><p class="note" style="color:var(--muted)">${d}</p></div>`:"";
+  const el=$(`<section class="stack" style="gap:30px">
+    <div class="stack" style="gap:2px"><p class="label">Round ${S.round}: who drew</p><p class="prompt">${esc(S.prompt)}</p></div>
+    <div class="board">${snaps}</div>
+    <div class="stack" style="gap:8px"><h2>Scores</h2>
+      <table><tbody>${rows.map(([p,s])=>`<tr><td class="who">${s===lead&&lead>0?IC.crown:""}${esc(p)}</td><td class="n">${s}</td></tr>`).join("")}</tbody></table></div>
+    <div class="awards">
+      ${award("Best disguise",sneak,"Fooled the most people")}
+      ${award("Best guesser",det,"Most correct guesses")}
+      ${obvious.length&&obvious.length<S.players.length?award("Easiest to spot",obvious,"Nobody was fooled"):""}
+    </div>
+    <div class="stack center" style="gap:6px">
+      <button class="go" id="again">Next round</button>
+      <button class="link" id="reset">Change players</button></div>
+  </section>`);
+  el.querySelector("#again").onclick=newRound;
+  el.querySelector("#reset").onclick=()=>{S.round=0;S.scores={};setup()};
+  frame(el,`Round ${S.round}`);
+}
+
+setup();
+</script>
+</body>
+</html>
